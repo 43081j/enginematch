@@ -1,0 +1,52 @@
+{
+  "name": "enginematch",
+  "version": "0.0.1",
+  "browserslist": [
+    "ios_saf 18.5"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "description": "A library to match user-defined engines and browserslist against targets.",
+  "keywords": [
+    "engines",
+    "browserslist",
+    "browsers",
+    "compat-data"
+  ],
+  "files": [
+    "lib",
+    "!lib/**/*.test.js",
+    "!lib/**/*.test.d.ts"
+  ],
+  "homepage": "https://github.com/43081j/enginematch#readme",
+  "bugs": {
+    "url": "https://github.com/43081j/enginematch/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/43081j/enginematch.git"
+  },
+  "license": "MIT",
+  "author": "James Garbutt (https://github.com/43081j)",
+  "type": "module",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsgo",
+    "test": "vitest run",
+    "format": "prettier --write src",
+    "lint": "npm run lint:format",
+    "lint:format": "prettier --check src"
+  },
+  "dependencies": {
+    "browserslist": "^4.28.1",
+    "empathic": "^2.0.0",
+    "semver": "^7.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/semver": "^7.7.1",
+    "@typescript/native-preview": "^7.0.0-dev.20251217.1",
+    "prettier": "^3.7.4"
+  }
+}
