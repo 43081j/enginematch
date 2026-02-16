@@ -1,93 +1,130 @@
 import browserslist from 'browserslist';
-import path from 'node:path';
-import {readFile} from 'node:fs/promises';
-import {up as findPackage} from 'empathic/package';
-import {satisfies as semverSatisfies, intersects as semverIntersects} from 'semver';
+import {
+  minVersion as semverMinVersion,
+  intersects as semverIntersects,
+  coerce as semverCoerce,
+  gte,
+  lte
+} from 'semver';
 
-export interface Options {
-  cwd: string;
-  overrideBrowsersList?: string[];
+export interface EngineConstraint {
+  engine: string;
+  minVersion?: string;
+  maxVersion?: string;
 }
 
-interface PackageJsonLike {
+export interface PackageJson {
   engines?: Record<string, string>;
+  browserslist?: string | string[] | Record<string, string | string[]>;
 }
 
-async function tryReadPackageJson(cwd: string): Promise<PackageJsonLike | null> {
-  const packageLocation = findPackage({cwd});
-  if (packageLocation) {
-    try {
-      const pkgContent = await readFile(packageLocation, 'utf-8');
-      return JSON.parse(pkgContent);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
+function parse_browserslist(
+  queries: PackageJson['browserslist']
+): Map<string, string[]> {
+  if (queries === undefined) return new Map();
 
-export interface Version {
-  browserslist?: string;
-  minimum?: string;
-  maximum?: string;
-}
+  let query_list: string[];
 
-export type VersionSpec = Record<string, Version>;
-
-export async function satisfies(spec: VersionSpec, opts: Options): Promise<boolean> {
-  const browsers = browserslist(opts.overrideBrowsersList, {
-    path: path.join(opts.cwd, 'package.json'),
-  })
-
-  const engines = new Map<string, string>();
-  const pkg = await tryReadPackageJson(opts.cwd);
-
-  if (pkg && Object.hasOwn(pkg, 'engines') && pkg.engines) {
-    for (const [engine, version] of Object.entries<string>(pkg.engines)) {
-      if (typeof version === 'string') {
-        engines.set(engine, version);
-      }
-    }
+  if (typeof queries === 'string') {
+    query_list = [queries];
+  } else if (Array.isArray(queries)) {
+    query_list = queries;
+  } else {
+    throw new Error(
+      'Unsupported browserslist format: ' + JSON.stringify(queries)
+    );
   }
 
-  for (const [engine, versionReq] of Object.entries<Version>(spec)) {
-    let browserslistVersions: string[] | undefined;
+  if (query_list.length === 0) return new Map();
 
-    if (versionReq.browserslist) {
-      browserslistVersions = browserslist(versionReq.browserslist);
-    }
+  const resolved = browserslist(query_list);
+  const map = new Map<string, string[]>();
 
-    const engineRange = engines.get(engine);
-
-    // If the engine isn't specified and there is no browserlist requirement,
-    // it is satisfied
-    if (!engineRange && !browserslistVersions) {
-      continue;
-    }
-
-    if (browserslistVersions) {
-      const allSatisfied = browserslistVersions.every(version => browsers.includes(version));
-      if (!allSatisfied) {
-        return false;
-      }
-    }
-
-    if (engineRange) {
-      if (versionReq.minimum && !semverSatisfies(versionReq.minimum, engineRange)) {
-        return false;
-      }
-
-      if (versionReq.maximum && semverIntersects(engineRange, '>' + versionReq.maximum)) {
-        return false;
-      }
+  for (const entry of resolved) {
+    const idx = entry.indexOf(' ');
+    if (idx === -1) continue;
+    const family = entry.slice(0, idx);
+    const version = entry.slice(idx + 1);
+    const existing = map.get(family);
+    if (existing) {
+      existing.push(version);
+    } else {
+      map.set(family, [version]);
     }
   }
 
-  return false;
+  return map;
 }
 
-satisfies({
-  node: {minimum: '14.0.0'},
-}, {
-  cwd: process.cwd(),
-});
+export function satisfies(
+  pkg: PackageJson,
+  options: {requirements: EngineConstraint[]}
+): boolean {
+  const {requirements} = options;
+  const browser_map = parse_browserslist(pkg.browserslist);
+  const engines = pkg.engines ?? {};
+
+  for (const constraint of requirements) {
+    const {engine, minVersion, maxVersion} = constraint;
+
+    if (!minVersion && !maxVersion) continue;
+
+    const engine_range = engines[engine];
+    const browser_versions = browser_map.get(engine);
+
+    // If the engine is not targeted at all (not in engines, not in browserslist),
+    // the constraint is trivially satisfied — the project doesn't target this engine.
+    if (!engine_range && !browser_versions) continue;
+
+    // Check semver engine range (e.g. node >=18)
+    if (engine_range) {
+      if (minVersion) {
+        const lowest = semverMinVersion(engine_range);
+        const coerced_min = semverCoerce(minVersion);
+        if (!lowest || !coerced_min || !gte(lowest, coerced_min)) {
+          return false;
+        }
+      }
+      if (maxVersion) {
+        if (semverIntersects(engine_range, '>' + maxVersion)) {
+          return false;
+        }
+      }
+    }
+
+    // Check browserslist-resolved versions
+    if (browser_versions) {
+      for (let version of browser_versions) {
+        // Safari Technology Preview — resolve to the actual latest safari version
+        if (version === 'TP') {
+          const latest = browserslist('last 1 safari version')[0];
+          if (!latest) continue;
+          version = latest.slice(latest.indexOf(' ') + 1);
+        }
+
+        // Handle range versions like "17.5-17.6"
+        const parts = version.split('-');
+        const low = parts[0]!;
+        const high = parts[parts.length - 1]!;
+
+        if (minVersion) {
+          const coerced = semverCoerce(low);
+          const coerced_min = semverCoerce(minVersion);
+          if (!coerced || !coerced_min || !gte(coerced, coerced_min)) {
+            return false;
+          }
+        }
+
+        if (maxVersion) {
+          const coerced = semverCoerce(high);
+          const coerced_max = semverCoerce(maxVersion);
+          if (!coerced || !coerced_max || !lte(coerced, coerced_max)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  return true;
+}
