@@ -25,8 +25,8 @@ importers:
         specifier: ^7.7.1
         version: 7.7.1
       '@typescript/native-preview':
-        specifier: ^7.0.0-dev.20251217.1
-        version: 7.0.0-dev.20260216.1
+        specifier: ^7.0.0-dev.20260218.1
+        version: 7.0.0-dev.20260218.1
       prettier:
         specifier: ^3.7.4
         version: 3.8.1
@@ -338,43 +338,43 @@ packages:
   '@types/semver@7.7.1':
     resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-ZcxlhZ4Scm1LFKeGXo7V+B4H1Mb27/uVBO1o7d060jRIpGRuCOxsELo7jgUY8UhhTXtSpLECHsmAj8EyERSi9w==}
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-ybxez4ClJU12TUvX/IxGPIQfS26+Zia7kbB1L4RH+G8yzYg90RPt4njfJkU2WxP70Hp59zS2copPkaBz5gUJkQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-hY+hondi5/2m0rNSIgRkOfmA6FIx+KKnjPd9R6hHHumQu00XXoYA/xcIq3SyV1sXtowkhN+hR3ZUp1y3Orb84A==}
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-n9Ki8WTW82w6PlBTlrAQAjEUQB2V7C2oXrkN5U7ElwUH4FOostSFzZHuAdnPMbdzMx76P0pEw9FteYrLDA4m9g==}
     cpu: [x64]
     os: [darwin]
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-L+3CgBVAjpYnWgulmTWOTp7IdbLjgOzLpppr2597i79KE5MV7UyC73UCdvK3GtAl1Huiss0HsWVBBEYRkLQsfw==}
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-Osus82LSlwi1l3LoxLWKDuxh5E8JyWwkseBjr2n+TMaTuDPcRSzT8Jr4ywIp3NJpCUUV/LzR84i64jA6g8iVIw==}
     cpu: [arm64]
     os: [linux]
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-Q+HBF1rlwpV1Nh2AESwte0lEHNPYVvbRLPQzTrorvx3gvXdRzfO9tHa6JL8Y1BO2KmSZBKmT7U+0188icTPBSg==}
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-WRPMvTztPatQ91UzYWSp82NT45JmjMgo/pVgZjXYEWdF2rwS4ejzR6DnHq30jXhEPnMah1bTeOzSWFF2kvXUmg==}
     cpu: [arm]
     os: [linux]
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-qIaQFRL2s+fi3zbS0+fCgR1Nk7fXMnbLW7wsFpcwn3fpEYuMdiQY9pwE8SvJsw2M78xZlXL5L9l5CL8ti0cNZQ==}
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-jcDhKCvhWQyMbra4MiqSgyUoSdM9mAiSkIdc80qScpk03aZOU+BZEmHz51S+fEn+8KRWuMuIHXM3sG3oX/EJZA==}
     cpu: [x64]
     os: [linux]
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-Yu7OLyMng9A2GA0vlZ8WZuqAnI+WM55UaY1UwA03TJdcljk/AcEzb/99fEq5g0kPg3k2wwHiyMrCGxxu99+gXQ==}
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-VmWvJ+TEuTPmZrhWe+buvvUvHbMyiD4ZLgxYPdYcJ3kRQlk2mD5lOq63ZISx1pDB8kYz5/R5xYKy/8gSIU5MgQ==}
     cpu: [arm64]
     os: [win32]
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-Lc+E1UNGKioOtKHUm1CLFO3W2PFWdLpJ6j2uB52RH0zhb63p4CEGCsuDH36QvgsXLibviExeNUF5Dum0rNKT9g==}
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-9zfUrKV3xBog2tpIR9NZOags+QJZSj7v9Ek7KdSkVu978IJqF9RX7oa2xftX+eiHySfV5ZQ8r2fdhdbYBk+kMw==}
     cpu: [x64]
     os: [win32]
 
-  '@typescript/native-preview@7.0.0-dev.20260216.1':
-    resolution: {integrity: sha512-Vhffqcro1Q3w1zRgZ0E1C5JOB+8CtwKjSsszYfpGkt0qvRtOBO227AcnQe1sEiX+VLZW3Iw1VGVMhc8hNhpRZw==}
+  '@typescript/native-preview@7.0.0-dev.20260218.1':
+    resolution: {integrity: sha512-hbGRXBk7abFvOQJk/7mc8K9q1kPkiyziyUsS8r8Hc1sLxrDFUbGgsW9p8qg67Xe1K6NUv/9UU2cdeIitUDexIQ==}
     hasBin: true
 
   '@vitest/expect@4.0.18':
@@ -799,36 +799,36 @@ snapshots:
 
   '@types/semver@7.7.1': {}
 
-  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-darwin-x64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-linux-arm64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-linux-arm@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-linux-arm@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-linux-x64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-linux-x64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-win32-arm64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview-win32-x64@7.0.0-dev.20260216.1':
+  '@typescript/native-preview-win32-x64@7.0.0-dev.20260218.1':
     optional: true
 
-  '@typescript/native-preview@7.0.0-dev.20260216.1':
+  '@typescript/native-preview@7.0.0-dev.20260218.1':
     optionalDependencies:
-      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260216.1
-      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260216.1
+      '@typescript/native-preview-darwin-arm64': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-darwin-x64': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-linux-arm': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-linux-arm64': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-linux-x64': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260218.1
+      '@typescript/native-preview-win32-x64': 7.0.0-dev.20260218.1
 
   '@vitest/expect@4.0.18':
     dependencies:
