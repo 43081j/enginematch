@@ -41,7 +41,6 @@
   },
   "dependencies": {
     "browserslist": "^4.28.1",
-    "empathic": "^2.0.0",
     "semver": "^7.7.3"
   },
   "devDependencies": {

@@ -18,26 +18,70 @@ export interface PackageJson {
   browserslist?: string | string[] | Record<string, string | string[]>;
 }
 
-function parse_browserslist(
-  queries: PackageJson['browserslist']
+/**
+ * Pick the right environment from an env-keyed browserslist config object.
+ * Mirrors the logic of browserslist's internal `pickEnv`.
+ */
+function pick_env(
+  config: Record<string, string | string[]>,
+  env?: string
+): string | string[] | undefined {
+  const name =
+    env ?? process.env.BROWSERSLIST_ENV ?? process.env.NODE_ENV ?? 'production';
+
+  return config[name] ?? config['defaults'];
+}
+
+/**
+ * Resolve browserslist queries from the package.json `browserslist` field,
+ * or by finding a config file (.browserslistrc, browserslist) via the
+ * `browserslist` package's built-in config resolution.
+ *
+ * When `pkg_browserslist` is undefined and `cwd` is set, `browserslist()`
+ * automatically discovers and reads config files (.browserslistrc,
+ * browserslist, package.json) by walking parent directories from `path`.
+ */
+function resolve_browserslist(
+  pkg_browserslist: PackageJson['browserslist'],
+  cwd?: string,
+  env?: string
 ): Map<string, string[]> {
-  if (queries === undefined) return new Map();
+  const bl_options: browserslist.LoadConfigOptions = {};
 
-  let query_list: string[];
-
-  if (typeof queries === 'string') {
-    query_list = [queries];
-  } else if (Array.isArray(queries)) {
-    query_list = queries;
-  } else {
-    throw new Error(
-      'Unsupported browserslist format: ' + JSON.stringify(queries)
-    );
+  if (env) {
+    bl_options.env = env;
   }
 
-  if (query_list.length === 0) return new Map();
+  if (cwd) {
+    bl_options.path = cwd;
+  }
 
-  const resolved = browserslist(query_list);
+  let queries: string | string[] | undefined;
+
+  if (pkg_browserslist !== undefined) {
+    if (
+      typeof pkg_browserslist === 'string' ||
+      Array.isArray(pkg_browserslist)
+    ) {
+      queries = pkg_browserslist;
+    } else {
+      // Record<string, string | string[]> — env-keyed config
+      const selected = pick_env(pkg_browserslist, env);
+      if (selected === undefined) return new Map();
+      queries = typeof selected === 'string' ? [selected] : selected;
+    }
+  } else if (cwd) {
+    // No inline browserslist — let browserslist find config files
+    // (.browserslistrc, browserslist, package.json) by walking up from cwd.
+    // loadConfig returns undefined when no config is found, which avoids
+    // falling through to browserslist's built-in defaults.
+    queries = browserslist.loadConfig(bl_options) ?? undefined;
+  }
+
+  if (queries === undefined || (Array.isArray(queries) && queries.length === 0))
+    return new Map();
+
+  const resolved = browserslist(queries, bl_options);
   const map = new Map<string, string[]>();
 
   for (const entry of resolved) {
@@ -56,12 +100,27 @@ function parse_browserslist(
   return map;
 }
 
+export interface SatisfiesOptions {
+  requirements: EngineConstraint[];
+  /**
+   * Working directory to search for `.browserslistrc` or `browserslist`
+   * config files when the package.json does not contain a `browserslist` key.
+   */
+  cwd?: string;
+  /**
+   * The browserslist environment to use when the config is env-keyed
+   * (e.g. `{ production: [...], development: [...] }`).
+   * Falls back to `BROWSERSLIST_ENV`, `NODE_ENV`, or `"production"`.
+   */
+  env?: string;
+}
+
 export function satisfies(
   pkg: PackageJson,
-  options: {requirements: EngineConstraint[]}
+  options: SatisfiesOptions
 ): boolean {
-  const {requirements} = options;
-  const browser_map = parse_browserslist(pkg.browserslist);
+  const {requirements, cwd, env} = options;
+  const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
   const engines = pkg.engines ?? {};
 
   for (const constraint of requirements) {

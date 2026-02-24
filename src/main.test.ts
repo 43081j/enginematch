@@ -1,5 +1,8 @@
-import {describe, it, expect} from 'vitest';
+import {describe, it, expect, beforeEach, afterEach} from 'vitest';
 import {satisfies} from './main.js';
+import {mkdtempSync, writeFileSync, mkdirSync, rmSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 
 describe('satisfies', () => {
   describe('trivial / base cases', () => {
@@ -299,8 +302,8 @@ describe('satisfies', () => {
   });
 
   describe('browserslist constraints — Record format (env-keyed)', () => {
-    it('throws for Record format', () => {
-      expect(() =>
+    it('picks production env by default', () => {
+      expect(
         satisfies(
           {
             browserslist: {
@@ -310,7 +313,70 @@ describe('satisfies', () => {
           },
           {requirements: [{engine: 'chrome', minVersion: '100'}]}
         )
-      ).toThrow('Unsupported browserslist format');
+      ).toBe(true);
+    });
+
+    it('picks the specified env when provided', () => {
+      expect(
+        satisfies(
+          {
+            browserslist: {
+              production: ['chrome >= 120'],
+              development: ['chrome >= 50']
+            }
+          },
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            env: 'development'
+          }
+        )
+      ).toBe(false);
+    });
+
+    it('falls back to defaults key when env is missing', () => {
+      expect(
+        satisfies(
+          {
+            browserslist: {
+              defaults: ['chrome >= 120'],
+              development: ['chrome >= 50']
+            }
+          },
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            env: 'staging'
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('returns true when env and defaults are both missing (no queries)', () => {
+      expect(
+        satisfies(
+          {
+            browserslist: {
+              development: ['chrome >= 50']
+            }
+          },
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            env: 'staging'
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('handles string values in Record format', () => {
+      expect(
+        satisfies(
+          {
+            browserslist: {
+              production: 'chrome >= 120'
+            }
+          },
+          {requirements: [{engine: 'chrome', minVersion: '100'}]}
+        )
+      ).toBe(true);
     });
   });
 
@@ -531,6 +597,186 @@ describe('satisfies', () => {
           }
         )
       ).not.toThrow();
+    });
+  });
+
+  describe('browserslist config file resolution', () => {
+    let tmp_dir: string;
+
+    beforeEach(() => {
+      tmp_dir = mkdtempSync(join(tmpdir(), 'enginematch-test-'));
+    });
+
+    afterEach(() => {
+      rmSync(tmp_dir, {recursive: true, force: true});
+    });
+
+    it('reads .browserslistrc from cwd', () => {
+      writeFileSync(join(tmp_dir, '.browserslistrc'), 'chrome >= 120\n');
+
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('reads browserslist file (without dot) from cwd', () => {
+      writeFileSync(join(tmp_dir, 'browserslist'), 'chrome >= 120\n');
+
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('fails when .browserslistrc targets old browsers', () => {
+      writeFileSync(join(tmp_dir, '.browserslistrc'), 'chrome >= 50\n');
+
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(false);
+    });
+
+    it('supports comments in .browserslistrc', () => {
+      writeFileSync(
+        join(tmp_dir, '.browserslistrc'),
+        '# Production browsers\nchrome >= 120\n# Firefox too\nfirefox >= 110\n'
+      );
+
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('supports section headers in .browserslistrc', () => {
+      writeFileSync(
+        join(tmp_dir, '.browserslistrc'),
+        '[production]\nchrome >= 120\n\n[development]\nchrome >= 50\n'
+      );
+
+      // Default env is production
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(true);
+
+      // Development env has older browsers
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir,
+            env: 'development'
+          }
+        )
+      ).toBe(false);
+    });
+
+    it('prefers defaults section when specified env is missing', () => {
+      writeFileSync(
+        join(tmp_dir, '.browserslistrc'),
+        'chrome >= 120\n\n[development]\nchrome >= 50\n'
+      );
+
+      // "staging" env doesn't exist, falls back to defaults
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir,
+            env: 'staging'
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('prefers package.json browserslist over config files', () => {
+      // Config file targets old browsers
+      writeFileSync(join(tmp_dir, '.browserslistrc'), 'chrome >= 50\n');
+
+      // But package.json browserslist targets new browsers — should take precedence
+      expect(
+        satisfies(
+          {browserslist: ['chrome >= 120']},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('does not search for config files when cwd is not provided', () => {
+      // Even though the real cwd might have a .browserslistrc,
+      // without cwd option, file resolution is skipped
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}]
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('walks parent directories to find config', () => {
+      const sub_dir = join(tmp_dir, 'packages', 'foo');
+      mkdirSync(sub_dir, {recursive: true});
+      writeFileSync(join(tmp_dir, '.browserslistrc'), 'chrome >= 120\n');
+
+      expect(
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: sub_dir
+          }
+        )
+      ).toBe(true);
+    });
+
+    it('throws when both .browserslistrc and browserslist file exist', () => {
+      writeFileSync(join(tmp_dir, '.browserslistrc'), 'chrome >= 120\n');
+      writeFileSync(join(tmp_dir, 'browserslist'), 'chrome >= 50\n');
+
+      expect(() =>
+        satisfies(
+          {},
+          {
+            requirements: [{engine: 'chrome', minVersion: '100'}],
+            cwd: tmp_dir
+          }
+        )
+      ).toThrow();
     });
   });
 });
