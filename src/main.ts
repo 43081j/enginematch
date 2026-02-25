@@ -70,16 +70,15 @@ function resolve_browserslist(
       if (selected === undefined) return new Map();
       queries = typeof selected === 'string' ? [selected] : selected;
     }
-  } else if (cwd) {
-    // No inline browserslist — let browserslist find config files
-    // (.browserslistrc, browserslist, package.json) by walking up from cwd.
-    // loadConfig returns undefined when no config is found, which avoids
-    // falling through to browserslist's built-in defaults.
-    queries = browserslist.loadConfig(bl_options) ?? undefined;
   }
 
-  if (queries === undefined || (Array.isArray(queries) && queries.length === 0))
-    return new Map();
+  if (
+    (typeof queries === 'string' && queries.trim() === '') ||
+    (Array.isArray(queries) && queries.length === 0)
+  ) {
+    // No inline browserslist pass undefined queries so browserslist() resolves from the config file via `path`.
+    queries = undefined;
+  }
 
   const resolved = browserslist(queries, bl_options);
   const map = new Map<string, string[]>();
