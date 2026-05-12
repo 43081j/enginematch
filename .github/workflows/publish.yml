@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          node-version: 20
+          node-version: 22.x
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -39,6 +39,8 @@ jobs:
           node-version: 22.x
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
+      - run: npm install -g npm@~11.10.0 # Work-around for https://github.com/npm/cli/issues/9151#issuecomment-4131466208
+      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: npm version ${TAG_NAME} --git-tag-version=false
