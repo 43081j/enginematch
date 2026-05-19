@@ -196,6 +196,72 @@ describe('satisfies', () => {
     });
   });
 
+  describe('engine name aliases (node / nodejs)', () => {
+    it('matches engines.node against a "nodejs" requirement', () => {
+      expect(
+        satisfies(
+          {engines: {node: '>=18'}},
+          {requirements: [{engine: 'nodejs', minVersion: '14.0.0'}]}
+        )
+      ).toBe(true);
+    });
+
+    it('matches engines.nodejs against a "node" requirement', () => {
+      expect(
+        satisfies(
+          {engines: {nodejs: '>=18'}},
+          {requirements: [{engine: 'node', minVersion: '14.0.0'}]}
+        )
+      ).toBe(true);
+    });
+
+    it('returns false when engines.node does not satisfy a "nodejs" requirement', () => {
+      expect(
+        satisfies(
+          {engines: {node: '>=16'}},
+          {requirements: [{engine: 'nodejs', minVersion: '20.0.0'}]}
+        )
+      ).toBe(false);
+    });
+
+    it('returns false when engines.nodejs does not satisfy a "node" requirement', () => {
+      expect(
+        satisfies(
+          {engines: {nodejs: '>=16'}},
+          {requirements: [{engine: 'node', minVersion: '20.0.0'}]}
+        )
+      ).toBe(false);
+    });
+
+    it('matches browserslist node family against a "nodejs" requirement', () => {
+      expect(
+        satisfies(
+          {browserslist: ['node 20']},
+          {requirements: [{engine: 'nodejs', minVersion: '18.0.0'}]}
+        )
+      ).toBe(true);
+    });
+
+    it('returns false when browserslist node family is below a "nodejs" requirement', () => {
+      expect(
+        satisfies(
+          {browserslist: ['node 16']},
+          {requirements: [{engine: 'nodejs', minVersion: '20.0.0'}]}
+        )
+      ).toBe(false);
+    });
+
+    it('does not alias unrelated engine names', () => {
+      // a `chrome` requirement must not pick up engines.node
+      expect(
+        satisfies(
+          {engines: {node: '>=18'}},
+          {requirements: [{engine: 'chrome', minVersion: '100.0.0'}]}
+        )
+      ).toBe(true); // trivially satisfied — chrome not targeted
+    });
+  });
+
   describe('browserslist constraints — string[] format', () => {
     it('returns true when all resolved browsers satisfy minVersion', () => {
       expect(
