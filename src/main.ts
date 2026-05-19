@@ -114,6 +114,17 @@ export interface SatisfiesOptions {
   env?: string;
 }
 
+const ENGINE_ALIASES: Array<readonly string[]> = [['node', 'nodejs']];
+
+function compute_engine_names(engine: string): readonly string[] {
+  for (const group of ENGINE_ALIASES) {
+    if (group.includes(engine)) {
+      return group;
+    }
+  }
+  return [engine];
+}
+
 export function satisfies(
   pkg: PackageJson,
   options: SatisfiesOptions
@@ -127,8 +138,20 @@ export function satisfies(
 
     if (!minVersion && !maxVersion) continue;
 
-    const engine_range = engines[engine];
-    const browser_versions = browser_map.get(engine);
+    const aliases = compute_engine_names(engine);
+    let engine_range: string | undefined;
+    let browser_versions: string[] | undefined;
+    for (const alias of aliases) {
+      if (!engine_range && Object.hasOwn(engines, alias)) {
+        engine_range = engines[alias];
+      }
+      if (!browser_versions) {
+        browser_versions = browser_map.get(alias);
+      }
+      if (browser_versions && engine_range) {
+        break;
+      }
+    }
 
     // If the engine is not targeted at all (not in engines, not in browserslist),
     // the constraint is trivially satisfied — the project doesn't target this engine.
