@@ -4,7 +4,8 @@ import {
   intersects as semverIntersects,
   coerce as semverCoerce,
   gte,
-  lte
+  lte,
+  SemVer
 } from 'semver';
 
 export interface EngineConstraint {
@@ -99,8 +100,7 @@ function resolve_browserslist(
   return map;
 }
 
-export interface SatisfiesOptions {
-  requirements: EngineConstraint[];
+export interface BaseOptions {
   /**
    * Working directory to search for `.browserslistrc` or `browserslist`
    * config files when the package.json does not contain a `browserslist` key.
@@ -114,6 +114,12 @@ export interface SatisfiesOptions {
   env?: string;
 }
 
+export interface SatisfiesOptions extends BaseOptions {
+  requirements: EngineConstraint[];
+}
+
+export type ResolveOptions = BaseOptions;
+
 const ENGINE_ALIASES: Array<readonly string[]> = [['node', 'nodejs']];
 
 function compute_engine_names(engine: string): readonly string[] {
@@ -123,6 +129,56 @@ function compute_engine_names(engine: string): readonly string[] {
     }
   }
   return [engine];
+}
+
+export function resolve(
+  pkg: PackageJson,
+  options: ResolveOptions
+): Map<string, string> {
+  const {cwd, env} = options;
+  const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
+  const engines = pkg.engines ?? {};
+  const result: Record<string, SemVer> = {};
+
+  for (const [engine, range] of Object.entries(engines)) {
+    const aliases = compute_engine_names(engine);
+    for (const alias of aliases) {
+      const lowest = semverMinVersion(range);
+      if (lowest) {
+        result[alias] = lowest;
+      }
+    }
+  }
+
+  for (const [browser, versions] of browser_map.entries()) {
+    let lowest: SemVer | null = null;
+
+    for (let version of versions) {
+      if (version === 'TP') {
+        const latest = browserslist('last 1 safari version')[0];
+        if (!latest) continue;
+        version = latest.slice(latest.indexOf(' ') + 1);
+      }
+
+      const dashIndex = version.indexOf('-');
+      const lower = dashIndex === -1 ? version : version.slice(0, dashIndex);
+      const coerced = semverCoerce(lower);
+      if (coerced && (lowest === null || lte(coerced, lowest))) {
+        lowest = coerced;
+      }
+    }
+
+    if (lowest) {
+      if (result[browser]) {
+        if (lte(result[browser], lowest)) {
+          continue;
+        }
+      }
+      result[browser] = lowest;
+    }
+  }
+
+  return new Map(Object.entries(result).map(([k, v]) => [k, v.toString()]));
 }
 
 export function satisfies(

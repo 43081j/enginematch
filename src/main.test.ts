@@ -1,5 +1,5 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest';
-import {satisfies} from './main.js';
+import {satisfies, resolve} from './main.js';
 import {mkdtempSync, writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
@@ -844,5 +844,33 @@ describe('satisfies', () => {
         )
       ).toThrow();
     });
+  });
+});
+
+describe('resolve', () => {
+  it('resolves browserslist queries from pkg.browserslist', () => {
+    expect(
+      resolve({browserslist: ['chrome >= 120', 'firefox >= 110']}, {})
+    ).toEqual(
+      new Map([
+        ['chrome', '120.0.0'],
+        ['firefox', '110.0.0']
+      ])
+    );
+  });
+
+  it('resolves browserslist queries from config file when pkg.browserslist is undefined', () => {
+    const tmp_dir = mkdtempSync(join(tmpdir(), 'enginematch-test-'));
+    writeFileSync(
+      join(tmp_dir, '.browserslistrc'),
+      'chrome >= 120\nfirefox >= 110\n'
+    );
+
+    expect(resolve({}, {cwd: tmp_dir})).toEqual(
+      new Map([
+        ['chrome', '120.0.0'],
+        ['firefox', '110.0.0']
+      ])
+    );
   });
 });
