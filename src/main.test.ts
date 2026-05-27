@@ -1,6 +1,7 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest';
 import {satisfies, resolve} from './main.js';
 import {mkdtempSync, writeFileSync, mkdirSync, rmSync} from 'node:fs';
+import {rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 
@@ -848,9 +849,24 @@ describe('satisfies', () => {
 });
 
 describe('resolve', () => {
+  let tmp_dir: string;
+
+  beforeEach(() => {
+    tmp_dir = mkdtempSync(join(tmpdir(), 'enginematch-test-'));
+  });
+
+  afterEach(async () => {
+    rm(tmp_dir, {recursive: true, force: true});
+  });
+
   it('resolves browserslist queries from pkg.browserslist', () => {
     expect(
-      resolve({browserslist: ['chrome >= 120', 'firefox >= 110']}, {})
+      resolve(
+        {browserslist: ['chrome >= 120', 'firefox >= 110']},
+        {
+          cwd: tmp_dir
+        }
+      )
     ).toEqual(
       new Map([
         ['chrome', '120.0.0'],
@@ -860,7 +876,6 @@ describe('resolve', () => {
   });
 
   it('resolves browserslist queries from config file when pkg.browserslist is undefined', () => {
-    const tmp_dir = mkdtempSync(join(tmpdir(), 'enginematch-test-'));
     writeFileSync(
       join(tmp_dir, '.browserslistrc'),
       'chrome >= 120\nfirefox >= 110\n'
@@ -872,5 +887,33 @@ describe('resolve', () => {
         ['firefox', '110.0.0']
       ])
     );
+  });
+
+  it('prefers engines over browserslist when both are present', () => {
+    expect(
+      resolve(
+        {
+          engines: {node: '>=18'},
+          browserslist: ['node >= 10']
+        },
+        {cwd: tmp_dir}
+      )
+    ).toEqual(new Map([['node', '18.0.0']]));
+  });
+
+  it('resolves engine aliases correctly', () => {
+    expect(
+      resolve(
+        {
+          engines: {node: '>=18'},
+          browserslist: ['node >= 10']
+        },
+        {cwd: tmp_dir}
+      )
+    ).toEqual(new Map([['node', '18.0.0']]));
+  });
+
+  it('returns empty map when no engines or browserslist', () => {
+    expect(resolve({}, {cwd: tmp_dir})).toEqual(new Map());
   });
 });
