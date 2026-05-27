@@ -81,8 +81,19 @@ function resolve_browserslist(
     queries = undefined;
   }
 
-  const resolved = browserslist(queries, bl_options);
   const map = new Map<string, string[]>();
+  let resolved: string[];
+
+  if (queries !== undefined) {
+    resolved = browserslist(queries, bl_options);
+  } else {
+    const resolvedConfig = browserslist.loadConfig(bl_options);
+    if (resolvedConfig === undefined) {
+      resolved = [];
+    } else {
+      resolved = browserslist(resolvedConfig, bl_options);
+    }
+  }
 
   for (const entry of resolved) {
     const idx = entry.indexOf(' ');
@@ -188,6 +199,7 @@ export function satisfies(
   const {requirements, cwd, env} = options;
   const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
   const engines = pkg.engines ?? {};
+  console.log(browser_map, engines);
 
   for (const constraint of requirements) {
     const {engine, minVersion, maxVersion} = constraint;
