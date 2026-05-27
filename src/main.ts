@@ -14,23 +14,66 @@ export interface EngineConstraint {
   maxVersion?: string;
 }
 
-export interface PackageJson {
-  engines?: Record<string, string>;
-  browserslist?: string | string[] | Record<string, string | string[]>;
-}
+type BrowsersListConfig = string | string[] | Record<string, unknown>;
+
+const get_browserslist_config = (
+  value: unknown
+): BrowsersListConfig | undefined => {
+  if (!isObject(value)) {
+    return undefined;
+  }
+  const browserslist = value.browserslist;
+  if (typeof browserslist === 'string') {
+    return browserslist;
+  }
+  if (
+    Array.isArray(browserslist) &&
+    browserslist.every((v) => typeof v === 'string')
+  ) {
+    return browserslist;
+  }
+  if (isObject(browserslist)) {
+    return browserslist;
+  }
+  return undefined;
+};
+
+const empty_engines: Record<string, string> = {};
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const get_engines_config = (value: unknown): Record<string, string> => {
+  if (!isObject(value)) {
+    return empty_engines;
+  }
+  const engines = value.engines;
+  if (
+    !isObject(engines) ||
+    !Object.values(engines).every((v) => typeof v === 'string')
+  ) {
+    return empty_engines;
+  }
+  return engines as Record<string, string>;
+};
 
 /**
  * Pick the right environment from an env-keyed browserslist config object.
  * Mirrors the logic of browserslist's internal `pickEnv`.
  */
 function pick_env(
-  config: Record<string, string | string[]>,
+  config: Record<string, unknown>,
   env?: string
 ): string | string[] | undefined {
   const name =
     env ?? process.env.BROWSERSLIST_ENV ?? process.env.NODE_ENV ?? 'production';
-
-  return config[name] ?? config['defaults'];
+  const val = config[name] ?? config['defaults'];
+  if (
+    typeof val === 'string' ||
+    (Array.isArray(val) && val.every((v) => typeof v === 'string'))
+  ) {
+    return val;
+  }
+  return undefined;
 }
 
 /**
@@ -43,7 +86,7 @@ function pick_env(
  * browserslist, package.json) by walking parent directories from `path`.
  */
 function resolve_browserslist(
-  pkg_browserslist: PackageJson['browserslist'],
+  pkg_browserslist: BrowsersListConfig | undefined,
   cwd?: string,
   env?: string
 ): Map<string, string[]> {
@@ -143,12 +186,13 @@ function compute_engine_names(engine: string): readonly string[] {
 }
 
 export function resolve(
-  pkg: PackageJson,
+  pkg: unknown,
   options: ResolveOptions
 ): Map<string, string> {
   const {cwd, env} = options;
-  const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
-  const engines = pkg.engines ?? {};
+  const browserslist_config = get_browserslist_config(pkg);
+  const browser_map = resolve_browserslist(browserslist_config, cwd, env);
+  const engines = get_engines_config(pkg);
   const result: Record<string, SemVer> = {};
 
   for (const [engine, range] of Object.entries(engines)) {
@@ -192,14 +236,11 @@ export function resolve(
   return new Map(Object.entries(result).map(([k, v]) => [k, v.toString()]));
 }
 
-export function satisfies(
-  pkg: PackageJson,
-  options: SatisfiesOptions
-): boolean {
+export function satisfies(pkg: unknown, options: SatisfiesOptions): boolean {
   const {requirements, cwd, env} = options;
-  const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
-  const engines = pkg.engines ?? {};
-  console.log(browser_map, engines);
+  const browserslist_config = get_browserslist_config(pkg);
+  const browser_map = resolve_browserslist(browserslist_config, cwd, env);
+  const engines = get_engines_config(pkg);
 
   for (const constraint of requirements) {
     const {engine, minVersion, maxVersion} = constraint;
