@@ -4,7 +4,8 @@ import {
   intersects as semverIntersects,
   coerce as semverCoerce,
   gte,
-  lte
+  lte,
+  SemVer
 } from 'semver';
 
 export interface EngineConstraint {
@@ -13,23 +14,66 @@ export interface EngineConstraint {
   maxVersion?: string;
 }
 
-export interface PackageJson {
-  engines?: Record<string, string>;
-  browserslist?: string | string[] | Record<string, string | string[]>;
-}
+type BrowsersListConfig = string | string[] | Record<string, unknown>;
+
+const empty_engines: Record<string, string> = Object.freeze({});
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const get_browserslist_config = (
+  value: unknown
+): BrowsersListConfig | undefined => {
+  if (!isObject(value)) {
+    return undefined;
+  }
+  const browserslist = value.browserslist;
+  if (typeof browserslist === 'string') {
+    return browserslist;
+  }
+  if (
+    Array.isArray(browserslist) &&
+    browserslist.every((v) => typeof v === 'string')
+  ) {
+    return browserslist;
+  }
+  if (isObject(browserslist)) {
+    return browserslist;
+  }
+  return undefined;
+};
+
+const get_engines_config = (value: unknown): Record<string, string> => {
+  if (!isObject(value)) {
+    return empty_engines;
+  }
+  const engines = value.engines;
+  if (
+    !isObject(engines) ||
+    !Object.values(engines).every((v) => typeof v === 'string')
+  ) {
+    return empty_engines;
+  }
+  return engines as Record<string, string>;
+};
 
 /**
  * Pick the right environment from an env-keyed browserslist config object.
  * Mirrors the logic of browserslist's internal `pickEnv`.
  */
 function pick_env(
-  config: Record<string, string | string[]>,
+  config: Record<string, unknown>,
   env?: string
 ): string | string[] | undefined {
   const name =
     env ?? process.env.BROWSERSLIST_ENV ?? process.env.NODE_ENV ?? 'production';
-
-  return config[name] ?? config['defaults'];
+  const val = config[name] ?? config['defaults'];
+  if (
+    typeof val === 'string' ||
+    (Array.isArray(val) && val.every((v) => typeof v === 'string'))
+  ) {
+    return val;
+  }
+  return undefined;
 }
 
 /**
@@ -42,7 +86,7 @@ function pick_env(
  * browserslist, package.json) by walking parent directories from `path`.
  */
 function resolve_browserslist(
-  pkg_browserslist: PackageJson['browserslist'],
+  pkg_browserslist: BrowsersListConfig | undefined,
   cwd?: string,
   env?: string
 ): Map<string, string[]> {
@@ -80,8 +124,19 @@ function resolve_browserslist(
     queries = undefined;
   }
 
-  const resolved = browserslist(queries, bl_options);
   const map = new Map<string, string[]>();
+  let resolved: string[];
+
+  if (queries !== undefined) {
+    resolved = browserslist(queries, bl_options);
+  } else {
+    const resolved_config = browserslist.loadConfig(bl_options);
+    if (resolved_config === undefined) {
+      resolved = [];
+    } else {
+      resolved = browserslist(resolved_config, bl_options);
+    }
+  }
 
   for (const entry of resolved) {
     const idx = entry.indexOf(' ');
@@ -99,8 +154,7 @@ function resolve_browserslist(
   return map;
 }
 
-export interface SatisfiesOptions {
-  requirements: EngineConstraint[];
+export interface BaseOptions {
   /**
    * Working directory to search for `.browserslistrc` or `browserslist`
    * config files when the package.json does not contain a `browserslist` key.
@@ -114,6 +168,12 @@ export interface SatisfiesOptions {
   env?: string;
 }
 
+export interface SatisfiesOptions extends BaseOptions {
+  requirements: EngineConstraint[];
+}
+
+export type ResolveOptions = BaseOptions;
+
 const ENGINE_ALIASES: Array<readonly string[]> = [['node', 'nodejs']];
 
 function compute_engine_names(engine: string): readonly string[] {
@@ -125,13 +185,62 @@ function compute_engine_names(engine: string): readonly string[] {
   return [engine];
 }
 
-export function satisfies(
-  pkg: PackageJson,
-  options: SatisfiesOptions
-): boolean {
+export function resolve(
+  pkg: unknown,
+  options: ResolveOptions
+): Map<string, string> {
+  const {cwd, env} = options;
+  const browserslist_config = get_browserslist_config(pkg);
+  const browser_map = resolve_browserslist(browserslist_config, cwd, env);
+  const engines = get_engines_config(pkg);
+  const result: Record<string, SemVer> = {};
+
+  for (const [browser, versions] of browser_map.entries()) {
+    let lowest: SemVer | null = null;
+
+    for (let version of versions) {
+      if (version === 'TP') {
+        const latest = browserslist('last 1 safari version')[0];
+        if (!latest) continue;
+        version = latest.slice(latest.indexOf(' ') + 1);
+      }
+
+      const dash_index = version.indexOf('-');
+      const lower = dash_index === -1 ? version : version.slice(0, dash_index);
+      const coerced = semverCoerce(lower);
+      if (coerced && (lowest === null || lte(coerced, lowest))) {
+        lowest = coerced;
+      }
+    }
+
+    if (lowest) {
+      if (result[browser]) {
+        if (lte(result[browser], lowest)) {
+          continue;
+        }
+      }
+      result[browser] = lowest;
+    }
+  }
+
+  for (const [engine, range] of Object.entries(engines)) {
+    const alias = compute_engine_names(engine)[0];
+    if (alias) {
+      const lowest = semverMinVersion(range);
+      if (lowest) {
+        result[alias] = lowest;
+      }
+    }
+  }
+
+  return new Map(Object.entries(result).map(([k, v]) => [k, v.toString()]));
+}
+
+export function satisfies(pkg: unknown, options: SatisfiesOptions): boolean {
   const {requirements, cwd, env} = options;
-  const browser_map = resolve_browserslist(pkg.browserslist, cwd, env);
-  const engines = pkg.engines ?? {};
+  const browserslist_config = get_browserslist_config(pkg);
+  const browser_map = resolve_browserslist(browserslist_config, cwd, env);
+  const engines = get_engines_config(pkg);
 
   for (const constraint of requirements) {
     const {engine, minVersion, maxVersion} = constraint;
