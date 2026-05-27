@@ -16,6 +16,10 @@ export interface EngineConstraint {
 
 type BrowsersListConfig = string | string[] | Record<string, unknown>;
 
+const empty_engines: Record<string, string> = Object.freeze({});
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 const get_browserslist_config = (
   value: unknown
 ): BrowsersListConfig | undefined => {
@@ -37,10 +41,6 @@ const get_browserslist_config = (
   }
   return undefined;
 };
-
-const empty_engines: Record<string, string> = {};
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const get_engines_config = (value: unknown): Record<string, string> => {
   if (!isObject(value)) {
@@ -130,11 +130,11 @@ function resolve_browserslist(
   if (queries !== undefined) {
     resolved = browserslist(queries, bl_options);
   } else {
-    const resolvedConfig = browserslist.loadConfig(bl_options);
-    if (resolvedConfig === undefined) {
+    const resolved_config = browserslist.loadConfig(bl_options);
+    if (resolved_config === undefined) {
       resolved = [];
     } else {
-      resolved = browserslist(resolvedConfig, bl_options);
+      resolved = browserslist(resolved_config, bl_options);
     }
   }
 
@@ -195,16 +195,6 @@ export function resolve(
   const engines = get_engines_config(pkg);
   const result: Record<string, SemVer> = {};
 
-  for (const [engine, range] of Object.entries(engines)) {
-    const aliases = compute_engine_names(engine);
-    for (const alias of aliases) {
-      const lowest = semverMinVersion(range);
-      if (lowest) {
-        result[alias] = lowest;
-      }
-    }
-  }
-
   for (const [browser, versions] of browser_map.entries()) {
     let lowest: SemVer | null = null;
 
@@ -215,8 +205,8 @@ export function resolve(
         version = latest.slice(latest.indexOf(' ') + 1);
       }
 
-      const dashIndex = version.indexOf('-');
-      const lower = dashIndex === -1 ? version : version.slice(0, dashIndex);
+      const dash_index = version.indexOf('-');
+      const lower = dash_index === -1 ? version : version.slice(0, dash_index);
       const coerced = semverCoerce(lower);
       if (coerced && (lowest === null || lte(coerced, lowest))) {
         lowest = coerced;
@@ -230,6 +220,16 @@ export function resolve(
         }
       }
       result[browser] = lowest;
+    }
+  }
+
+  for (const [engine, range] of Object.entries(engines)) {
+    const alias = compute_engine_names(engine)[0];
+    if (alias) {
+      const lowest = semverMinVersion(range);
+      if (lowest) {
+        result[alias] = lowest;
+      }
     }
   }
 
