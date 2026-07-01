@@ -44,8 +44,8 @@
     "lint:format": "prettier --check src"
   },
   "dependencies": {
-    "browserslist": "^4.28.2",
-    "semver": "^7.8.0"
+    "browserslist": "^4.28.4",
+    "semver": "^7.8.5"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
