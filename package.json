@@ -1,9 +1,9 @@
 {
   "name": "enginematch",
-  "packageManager": "pnpm@10.21.0",
+  "packageManager": "pnpm@12.16.1",
   "version": "0.0.1",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.12.0"
   },
   "description": "A library to match user-defined engines and browserslist against targets.",
   "keywords": [
@@ -37,21 +37,27 @@
     }
   },
   "scripts": {
-    "build": "tsgo",
+    "build": "tsc",
     "test": "vitest run",
     "format": "prettier --write src",
-    "lint": "npm run lint:format",
+    "lint": "pnpm run lint:format",
     "lint:format": "prettier --check src"
   },
   "dependencies": {
-    "browserslist": "^4.28.2",
-    "semver": "^7.8.0"
+    "browserslist": "^4.29.5",
+    "verkit": "^0.5.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@types/semver": "^7.7.1",
-    "@typescript/native-preview": "^7.0.0-dev.20260519.1",
-    "prettier": "^3.8.3",
-    "vitest": "^4.1.7"
+    "@types/node": "^26.6.6",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12",
+      "onFail": "ignore"
+    }
   }
 }
