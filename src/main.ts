@@ -1,12 +1,13 @@
 import browserslist from 'browserslist';
 import {
-  minVersion as semverMinVersion,
-  intersects as semverIntersects,
-  coerce as semverCoerce,
-  gte,
-  lte,
-  SemVer
-} from 'semver';
+  findMinimumForRange,
+  rangesIntersect,
+  coerce,
+  isGreaterThanOrEqual,
+  isLessThanOrEqual,
+  normalize,
+  type SemVer
+} from 'verkit';
 
 export interface EngineConstraint {
   engine: string;
@@ -207,15 +208,15 @@ export function resolve(
 
       const dash_index = version.indexOf('-');
       const lower = dash_index === -1 ? version : version.slice(0, dash_index);
-      const coerced = semverCoerce(lower);
-      if (coerced && (lowest === null || lte(coerced, lowest))) {
+      const coerced = coerce(lower);
+      if (coerced && (lowest === null || isLessThanOrEqual(coerced, lowest))) {
         lowest = coerced;
       }
     }
 
     if (lowest) {
       if (result[browser]) {
-        if (lte(result[browser], lowest)) {
+        if (isLessThanOrEqual(result[browser], lowest)) {
           continue;
         }
       }
@@ -226,14 +227,14 @@ export function resolve(
   for (const [engine, range] of Object.entries(engines)) {
     const alias = compute_engine_names(engine)[0];
     if (alias) {
-      const lowest = semverMinVersion(range);
+      const lowest = findMinimumForRange(range);
       if (lowest) {
         result[alias] = lowest;
       }
     }
   }
 
-  return new Map(Object.entries(result).map(([k, v]) => [k, v.toString()]));
+  return new Map(Object.entries(result).map(([k, v]) => [k, normalize(v)!]));
 }
 
 export function satisfies(pkg: unknown, options: SatisfiesOptions): boolean {
@@ -269,14 +270,18 @@ export function satisfies(pkg: unknown, options: SatisfiesOptions): boolean {
     // Check semver engine range (e.g. node >=18)
     if (engine_range) {
       if (minVersion) {
-        const lowest = semverMinVersion(engine_range);
-        const coerced_min = semverCoerce(minVersion);
-        if (!lowest || !coerced_min || !gte(lowest, coerced_min)) {
+        const lowest = findMinimumForRange(engine_range);
+        const coerced_min = coerce(minVersion);
+        if (
+          !lowest ||
+          !coerced_min ||
+          !isGreaterThanOrEqual(lowest, coerced_min)
+        ) {
           return false;
         }
       }
       if (maxVersion) {
-        if (semverIntersects(engine_range, '>' + maxVersion)) {
+        if (rangesIntersect(engine_range, '>' + maxVersion)) {
           return false;
         }
       }
@@ -295,20 +300,28 @@ export function satisfies(pkg: unknown, options: SatisfiesOptions): boolean {
         // Handle range versions like "17.5-17.6"
         const parts = version.split('-');
         const low = parts[0]!;
-        const high = parts[parts.length - 1]!;
+        const high = parts.at(-1)!;
 
         if (minVersion) {
-          const coerced = semverCoerce(low);
-          const coerced_min = semverCoerce(minVersion);
-          if (!coerced || !coerced_min || !gte(coerced, coerced_min)) {
+          const coerced = coerce(low);
+          const coerced_min = coerce(minVersion);
+          if (
+            !coerced ||
+            !coerced_min ||
+            !isGreaterThanOrEqual(coerced, coerced_min)
+          ) {
             return false;
           }
         }
 
         if (maxVersion) {
-          const coerced = semverCoerce(high);
-          const coerced_max = semverCoerce(maxVersion);
-          if (!coerced || !coerced_max || !lte(coerced, coerced_max)) {
+          const coerced = coerce(high);
+          const coerced_max = coerce(maxVersion);
+          if (
+            !coerced ||
+            !coerced_max ||
+            !isLessThanOrEqual(coerced, coerced_max)
+          ) {
             return false;
           }
         }

@@ -3,7 +3,7 @@
   "packageManager": "pnpm@12.16.1",
   "version": "0.0.1",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.12.0"
   },
   "description": "A library to match user-defined engines and browserslist against targets.",
   "keywords": [
@@ -45,11 +45,10 @@
   },
   "dependencies": {
     "browserslist": "^4.29.5",
-    "semver": "^7.8.5"
+    "verkit": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "@types/semver": "^7.8.0",
     "prettier": "^3.9.10",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
